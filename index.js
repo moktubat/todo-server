@@ -34,7 +34,17 @@ async function run() {
       res.send(result);
     });
 
-    
+    // ========post user for db create============
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existingUser = await usersCollection.findOne(query);
+      if (existingUser) {
+        return res.send("user already exists");
+      }
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
 
     // ========get tasks api============
     app.get("/tasks", async (req, res) => {
@@ -46,7 +56,58 @@ async function run() {
         res.status(500).json({ error: "Internal Server Error" });
       }
     });
-    
+    // ========post tasks api============
+    app.post("/tasks", async (req, res) => {
+      const newTask = req.body;
+
+      try {
+        const result = await tasksCollection.insertOne(newTask);
+        res.status(201).json(result);
+      } catch (err) {
+        console.error("Error creating task:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+    // ========delete tasks api============
+
+    app.delete("/tasks/:id", async (req, res) => {
+      const taskId = req.params.id;
+
+      try {
+        const result = await tasksCollection.deleteOne({
+          _id: ObjectId(taskId),
+        });
+        if (result.deletedCount === 0) {
+          res.status(404).json({ error: "Task not found" });
+        } else {
+          res.json({ message: "Task deleted successfully" });
+        }
+      } catch (err) {
+        console.error("Error deleting task:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+    // ========patch tasks api============
+    app.patch("/tasks/:id", async (req, res) => {
+      const taskId = req.params.id;
+      const updatedTaskData = req.body;
+
+      try {
+        const result = await tasksCollection.updateOne(
+          { _id: new ObjectId(taskId) },
+          { $set: updatedTaskData }
+        );
+
+        if (result.matchedCount === 0) {
+          res.status(404).json({ error: "Task not found" });
+        } else {
+          res.json({ message: "Task updated successfully" });
+        }
+      } catch (err) {
+        console.error("Error updating task:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
