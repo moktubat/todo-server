@@ -8,7 +8,7 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.odqhq4i.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -33,7 +33,6 @@ async function run() {
       const result = await usersCollection.find(query).toArray();
       res.send(result);
     });
-
     // ========post user for db create============
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -56,6 +55,7 @@ async function run() {
         res.status(500).json({ error: "Internal Server Error" });
       }
     });
+
     // ========post tasks api============
     app.post("/tasks", async (req, res) => {
       const newTask = req.body;
@@ -68,6 +68,21 @@ async function run() {
         res.status(500).json({ error: "Internal Server Error" });
       }
     });
+
+    app.get("/task/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await tasksCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.delete("/task/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await tasksCollection.deleteOne(query);
+      res.send({ deleteCount: result.deletedCount });
+    });
+
     // ========delete tasks api============
 
     app.delete("/tasks/:id", async (req, res) => {
