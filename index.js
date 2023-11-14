@@ -70,11 +70,24 @@ async function run() {
     });
 
     app.get("/task/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await tasksCollection.findOne(query);
-      res.send(result);
+      const taskId = req.params.id;
+    
+      try {
+        const task = await tasksCollection.findOne({
+          _id: new ObjectId(taskId),
+        });
+    
+        if (!task) {
+          res.status(404).json({ error: "Task not found", taskId });
+        } else {
+          res.json(task);
+        }
+      } catch (err) {
+        console.error("Error fetching task:", err);
+        res.status(500).json({ error: `Internal Server Error: ${err.message}` });
+      }
     });
+    
 
     app.delete("/task/:id", async (req, res) => {
       const id = req.params.id;
@@ -103,23 +116,57 @@ async function run() {
       }
     });
     // ========patch tasks api============
-    app.patch("/tasks/:id", async (req, res) => {
+    app.patch("/task/:id", async (req, res) => {
       const taskId = req.params.id;
       const updatedTaskData = req.body;
-
+    
       try {
         const result = await tasksCollection.updateOne(
           { _id: new ObjectId(taskId) },
           { $set: updatedTaskData }
         );
-
+    
         if (result.matchedCount === 0) {
-          res.status(404).json({ error: "Task not found" });
+          res.status(404).json({ error: "Task not found", taskId });
         } else {
-          res.json({ message: "Task updated successfully" });
+          res.json({ message: "Task updated successfully", taskId });
         }
       } catch (err) {
         console.error("Error updating task:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
+    app.get("/myTasks", async (req, res) => {
+      const userId = req.params.userId;
+    
+      try {
+        const userTasks = await tasksCollection.find({ assignedTo: userId }).toArray();
+        res.json(userTasks);
+      } catch (err) {
+        console.error("Error fetching user tasks:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+    
+    app.post("/myTasks", async (req, res) => {
+      const userId = req.params.userId;
+      const newTask = req.body;
+    
+      try {
+        // Check if the user exists
+        const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+        if (!user) {
+          return res.status(404).json({ error: "User not found", userId });
+        }
+    
+        // Assign the task to the user
+        newTask.assignedTo = userId;
+    
+        const result = await tasksCollection.insertOne(newTask);
+        res.status(201).json(result);
+      } catch (err) {
+        console.error("Error creating user task:", err);
         res.status(500).json({ error: "Internal Server Error" });
       }
     });
